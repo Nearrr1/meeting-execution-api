@@ -1,0 +1,2 @@
+# Local Phase 2 memory-service exploration only; not an API runtime dependency.
+hindsight-api==0.10.2

@@ -5,6 +5,8 @@ build/
 coverage/
 .next/
 out/
+.hindsight-venv/
+.uv-cache/
 
 # Local environment and secrets
 .env

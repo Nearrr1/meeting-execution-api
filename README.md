@@ -20,7 +20,24 @@ Product requirements, SRS, cross-repository architecture, and ADRs live in the s
 
 ## Local setup and commands
 
-There is no runnable application or dependency manifest in this bootstrap. Development commands, environment variables, tests, and deployment instructions will be added after the corresponding requirements and implementation are approved.
+The API application is still a bootstrap. Hindsight is installed separately as a local development service for the Phase 2 Second Brain work; it is not wired into API requests or required by the Phase 1 workflow.
+
+On Windows, install the standalone Hindsight API in an isolated environment from this repository root:
+
+```powershell
+uv venv .hindsight-venv --python 3.12 --cache-dir .uv-cache
+uv pip install --python .hindsight-venv\Scripts\python.exe -r requirements-hindsight.txt --cache-dir .uv-cache
+```
+
+To start it, set `HINDSIGHT_API_LLM_PROVIDER` and `HINDSIGHT_API_LLM_API_KEY` in the current PowerShell session using a provider you have chosen, then run:
+
+```powershell
+.\.hindsight-venv\Scripts\hindsight-api.exe --host 127.0.0.1
+```
+
+The API listens on `http://127.0.0.1:8888`. The server uses Hindsight's local embedded database by default. Keep provider credentials in an untracked secret store or process environment; do not put them in this repository. The Hindsight API package, its data, and local uv cache are excluded from Git. No memory banks or meeting data are created by installation alone.
+
+The Hindsight service is a development setup only. Product integration, bank/tenant isolation, approved memory sources, retention/deletion, and authority enforcement remain subject to their Phase 2 feature specification and ADR.
 
 Copy `.env.example` to `.env` only when a later phase defines the required variables. Never commit `.env`, credentials, or API keys.
 
