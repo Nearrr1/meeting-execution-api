@@ -20,7 +20,7 @@ Product requirements, SRS, cross-repository architecture, and ADRs live in the s
 
 ## Local setup and commands
 
-The API application is still a bootstrap. Hindsight is installed separately as a local development service for the Phase 2 Second Brain work; it is not wired into API requests or required by the Phase 1 workflow.
+The API application is still a bootstrap. Hindsight is installed separately as a local development service for the Phase 2 Second Brain work; it is not wired into API requests or required by the Phase 1 workflow. The OpenAI configuration below applies only to Hindsight's memory operations; it does not select the product's meeting-analysis provider.
 
 On Windows, install the standalone Hindsight API in an isolated environment from this repository root:
 
@@ -29,13 +29,26 @@ uv venv .hindsight-venv --python 3.12 --cache-dir .uv-cache
 uv pip install --python .hindsight-venv\Scripts\python.exe -r requirements-hindsight.txt --cache-dir .uv-cache
 ```
 
-To start it, set `HINDSIGHT_API_LLM_PROVIDER` and `HINDSIGHT_API_LLM_API_KEY` in the current PowerShell session using a provider you have chosen, then run:
+To start it from PowerShell, set `HINDSIGHT_API_LLM_PROVIDER` and `HINDSIGHT_API_LLM_API_KEY` in the current session, then run the server command below. For Git Bash, use the OpenAI command after the PowerShell example.
 
 ```powershell
 .\.hindsight-venv\Scripts\hindsight-api.exe --host 127.0.0.1
 ```
 
 The API listens on `http://127.0.0.1:8888`. The server uses Hindsight's local embedded database by default. Keep provider credentials in an untracked secret store or process environment; do not put them in this repository. The Hindsight API package, its data, and local uv cache are excluded from Git. No memory banks or meeting data are created by installation alone.
+
+For **Git Bash on Windows**, run this from the API repository root. It selects Hindsight's OpenAI Responses provider with GPT-5.4 mini and prompts for the API key without echoing it or putting it in shell history:
+
+```bash
+export HINDSIGHT_API_LLM_PROVIDER='openai-responses'
+export HINDSIGHT_API_LLM_MODEL='gpt-5.4-mini'
+read -r -s -p 'OpenAI API key: ' HINDSIGHT_API_LLM_API_KEY
+printf '\n'
+export HINDSIGHT_API_LLM_API_KEY
+./.hindsight-venv/Scripts/hindsight-api.exe --host 127.0.0.1
+```
+
+GPT-5.4 mini supports the Responses API and function calling and is a cost-efficient option for Hindsight's memory tasks ([Hindsight provider guidance](https://hindsight.vectorize.io/developer/models), [OpenAI model details and pricing](https://developers.openai.com/api/docs/models/gpt-5.4-mini)). OpenAI API usage is billed separately. This local Hindsight choice does not select the product's meeting-analysis provider.
 
 The Hindsight service is a development setup only. Product integration, bank/tenant isolation, approved memory sources, retention/deletion, and authority enforcement remain subject to their Phase 2 feature specification and ADR.
 
