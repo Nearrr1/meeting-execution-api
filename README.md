@@ -20,7 +20,7 @@ Product requirements, SRS, cross-repository architecture, and ADRs live in the s
 
 ## Local setup and commands
 
-The API application is still a bootstrap. Hindsight is installed separately as a local development service for the Phase 2 Second Brain work; it is not wired into API requests or required by the Phase 1 workflow. The OpenAI configuration below applies only to Hindsight's memory operations; it does not select the product's meeting-analysis provider.
+The API application is still a bootstrap. Hindsight is installed separately as a local development service and may be used now as project memory for the AI coding assistant, retaining curated architecture/spec context across sessions. It is not wired into API requests; the Phase 1 product workflow remains independent of Hindsight. End-user Second Brain integration is a later Phase 2 feature. The OpenAI configuration below applies only to this local Hindsight service; it does not select the product's meeting-analysis provider.
 
 On Windows, install the standalone Hindsight API in an isolated environment from this repository root:
 
@@ -29,23 +29,28 @@ uv venv .hindsight-venv --python 3.12 --cache-dir .uv-cache
 uv pip install --python .hindsight-venv\Scripts\python.exe -r requirements-hindsight.txt --cache-dir .uv-cache
 ```
 
-To start it from PowerShell, set `HINDSIGHT_API_LLM_PROVIDER` and `HINDSIGHT_API_LLM_API_KEY` in the current session, then run the server command below. For Git Bash, use the OpenAI command after the PowerShell example.
+To start it from PowerShell, run the launcher below from the API repository root. It prompts for the key without echoing it and exposes only bank creation plus retain/recall/reflect through MCP.
 
 ```powershell
-.\.hindsight-venv\Scripts\hindsight-api.exe --host 127.0.0.1
+powershell -ExecutionPolicy Bypass -File .\start-hindsight.ps1
 ```
 
-The API listens on `http://127.0.0.1:8888`. The server uses Hindsight's local embedded database by default. Keep provider credentials in an untracked secret store or process environment; do not put them in this repository. The Hindsight API package, its data, and local uv cache are excluded from Git. No memory banks or meeting data are created by installation alone.
+The API listens on `http://127.0.0.1:8888`. The server uses Hindsight's local embedded database by default. Keep provider credentials in an untracked secret store or process environment; do not put them in this repository. The Hindsight API package, its data, and local uv cache are excluded from Git. Installation alone creates no project-memory bank or product meeting memory. To make memory available to Codex, connect its MCP client to the local Hindsight MCP endpoint and create/seed a project bank; those steps are not configured by installing the API. Store only curated, non-secret project context; the specifications repository remains the source of truth and should be checked before relying on recalled details.
 
-For **Git Bash on Windows**, run this from the API repository root. It selects Hindsight's OpenAI Responses provider with GPT-5.4 mini and prompts for the API key without echoing it or putting it in shell history:
+The workspace registers the local MCP endpoint in `.codex/config.toml`. Start the Hindsight service first, then reload/restart Codex so its `hindsight` tools become available. The root MCP endpoint supports bank management; use the `aimetingexecution-project` bank for this workspace.
+
+For **Git Bash on Windows**, run this from the API repository root. It selects Hindsight's OpenAI Responses provider with GPT-5.4 mini and prompts for the API key without echoing it or putting it in shell history. The PowerShell launcher above additionally limits the MCP tools exposed to Codex.
 
 ```bash
 export HINDSIGHT_API_LLM_PROVIDER='openai-responses'
 export HINDSIGHT_API_LLM_MODEL='gpt-5.4-mini'
+export HINDSIGHT_API_MCP_ENABLED='true'
+export HINDSIGHT_API_MCP_ENABLED_TOOLS='create_bank,retain,recall,reflect'
+export HINDSIGHT_API_MCP_INSTRUCTIONS='Use bank aimetingexecution-project for curated AI Meeting Execution architecture, specifications, ADRs, and durable project decisions. Never retain credentials, secrets, or raw meeting transcripts. Treat current specs and ADRs as authoritative; memory is supplemental.'
 read -r -s -p 'OpenAI API key: ' HINDSIGHT_API_LLM_API_KEY
 printf '\n'
 export HINDSIGHT_API_LLM_API_KEY
-./.hindsight-venv/Scripts/hindsight-api.exe --host 127.0.0.1
+./.hindsight-venv/Scripts/python.exe -c "import sys; sys.argv = ['hindsight-api', '--host', '127.0.0.1']; from hindsight_api.main import main; main()"
 ```
 
 GPT-5.4 mini supports the Responses API and function calling and is a cost-efficient option for Hindsight's memory tasks ([Hindsight provider guidance](https://hindsight.vectorize.io/developer/models), [OpenAI model details and pricing](https://developers.openai.com/api/docs/models/gpt-5.4-mini)). OpenAI API usage is billed separately. This local Hindsight choice does not select the product's meeting-analysis provider.
