@@ -1,0 +1,582 @@
+openapi: 3.1.0
+info:
+  title: AI Meeting Execution API
+  version: 1.0.0
+  description: |
+    API-owned authentication contract, transferred from the owner-approved
+    product contract in meeting-execution-specs/specs/003-auth-private-space.
+    Product behavior remains governed by that specification. This file is the
+    API repository's source of truth for the implemented HTTP contract.
+    All mutating browser-origin requests require CSRF protection and exact
+    allow-listed Origin validation. Same-site sessions use Secure, HttpOnly,
+    SameSite=Lax cookies; cross-site sessions use SameSite=None plus strict
+    CSRF and Origin validation. The API always derives account and personal
+    space scope from the validated session, never client-supplied identifiers.
+servers:
+  - url: /api/v1
+tags:
+  - name: Authentication
+  - name: Account
+paths:
+  /auth/csrf-token:
+    get:
+      tags: [Authentication]
+      summary: Issue a CSRF token for browser requests
+      operationId: getCsrfToken
+      description: Sets a short-lived HttpOnly CSRF cookie and returns the matching token for the X-CSRF-Token header. Browser clients must include credentials. Mutating requests require an exact allow-listed Origin.
+      responses:
+        '200':
+          description: CSRF token issued
+          headers:
+            Set-Cookie:
+              description: Short-lived CSRF cookie.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [csrfToken]
+                properties:
+                  csrfToken: { type: string }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/registrations:
+    post:
+      tags: [Authentication]
+      summary: Register with email and password
+      operationId: createRegistration
+      description: Creates a pending account, credential, private space, and OTP challenge. Public response does not reveal whether the email already exists.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegistrationRequest' }
+      responses:
+        '202':
+          description: Verification requested; generic for existing and new addresses
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VerificationRequired' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+  /auth/registrations/verify-email:
+    post:
+      tags: [Authentication]
+      summary: Verify registration email with OTP
+      operationId: verifyRegistrationEmail
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyEmailRequest' }
+      responses:
+        '200':
+          description: Email verified and session issued
+          headers:
+            Set-Cookie:
+              $ref: '#/components/headers/SessionCookie'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSession' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/registrations/resend-email-otp:
+    post:
+      tags: [Authentication]
+      summary: Resend registration email OTP
+      operationId: resendRegistrationOtp
+      description: Generic response whether or not a pending registration exists. Six-digit OTP; 10-minute expiry; 60-second cooldown; five sends/hour/email and 20/hour/IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '202': { description: Request accepted }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/sessions:
+    post:
+      tags: [Authentication]
+      summary: Create a local authenticated session
+      operationId: createSession
+      description: Generic 401 for unknown, unverified, disabled, or invalid credentials. Failed attempts are limited to five per normalized email and 20 per source IP in a rolling hour; over-limit responses remain generic 401 and never lock the account.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignInRequest' }
+      responses:
+        '201':
+          description: Session created
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookie' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+    get:
+      tags: [Authentication]
+      summary: List current account sessions
+      operationId: listSessions
+      description: Returns opaque IDs, timestamps, expiry, and coarse user-agent labels; never secrets or precise IP history.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Active and relevant session summaries
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: '#/components/schemas/SessionSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/session:
+    get:
+      tags: [Authentication]
+      summary: Get current account and session
+      operationId: getCurrentSession
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Current account and session metadata; no session secret
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountSession' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    delete:
+      tags: [Authentication]
+      summary: Revoke current session
+      operationId: revokeCurrentSession
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204':
+          description: Session revoked and cookie cleared
+          headers:
+            Set-Cookie:
+              description: Clears the session cookie.
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/reauth:
+    post:
+      tags: [Authentication]
+      summary: Reauthenticate the current account
+      operationId: reauthenticate
+      description: |
+        Requires the current session. For a local credential, accept the current
+        password and return 204 after recording reauthenticatedAt on this session.
+        For a federated identity, accept its provider and return an Auth0
+        authorization URL that performs a fresh OIDC authentication. The
+        reauthentication callback must prove the same product account and update
+        only the initiating live session. Reauthentication is valid for 10 minutes.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReauthenticationRequest' }
+      responses:
+        '200':
+          description: Fresh OIDC authentication required
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReauthenticationRedirect' }
+        '204': { description: Local password verified and current session reauthenticated }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/sessions/{sessionId}:
+    parameters:
+      - $ref: '#/components/parameters/SessionId'
+    delete:
+      tags: [Authentication]
+      summary: Revoke one of the current account's sessions
+      operationId: revokeSession
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Session revoked; no cross-account existence disclosure }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/oidc/{provider}/start:
+    get:
+      tags: [Authentication]
+      summary: Start Auth0 OIDC sign-in or explicit linking
+      operationId: startOidc
+      description: Browser navigation. Creates one-use server-side state, nonce, and PKCE transaction. Linking requires a current session and reauthentication within 10 minutes; intent is explicit and server-side. Redirect destination is allow-listed.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [google, microsoft] }
+        - name: intent
+          in: query
+          required: false
+          description: Omit for sign-in; use link or reauth only with a current account session and an explicit user action.
+          schema: { type: string, enum: [link, reauth] }
+        - name: returnTo
+          in: query
+          required: false
+          description: First-party allow-listed path only.
+          schema: { type: string, maxLength: 2048 }
+      security:
+        - {}
+        - sessionCookie: []
+      responses:
+        '302':
+          description: Redirect to Auth0 authorization endpoint
+          headers:
+            Location: { schema: { type: string, format: uri } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /auth/oidc/callback:
+    get:
+      tags: [Authentication]
+      summary: Complete Auth0 OIDC transaction
+      operationId: completeOidc
+      description: Validates state, nonce, issuer, audience, signature, expiry, and subject; consumes transaction once; maps by (issuer, subject), never email equality. Sign-in issues an API session; link binds to the initiating account; reauth must resolve to the same account and updates only the initiating live session's reauthentication timestamp. Redirects only to a first-party allow-listed destination. Upstream provider tokens are never returned.
+      parameters:
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: state, in: query, required: true, schema: { type: string } }
+      security: []
+      responses:
+        '302':
+          description: Redirect to allow-listed first-party destination
+          headers:
+            Location: { schema: { type: string, format: uri } }
+            Set-Cookie:
+              description: Issued only for sign-in; link and reauthentication preserve the current session.
+              schema: { type: string }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /account/identities:
+    get:
+      tags: [Account]
+      summary: List linked sign-in identities
+      operationId: listIdentities
+      security: [{ sessionCookie: [] }]
+      responses:
+        '200':
+          description: Linked identities without provider secrets
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [identities]
+                properties:
+                  identities:
+                    type: array
+                    items: { $ref: '#/components/schemas/Identity' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /account/identities/{identityId}:
+    parameters:
+      - name: identityId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      tags: [Account]
+      summary: Unlink a sign-in identity
+      operationId: unlinkIdentity
+      description: Requires recent reauthentication and proof of control; another usable sign-in method must remain.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Identity unlinked }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /auth/password-recovery-requests:
+    post:
+      tags: [Authentication]
+      summary: Request password recovery
+      operationId: requestPasswordRecovery
+      description: Generic response for known and unknown accounts. Link is single-use, valid for 30 minutes; limits five/hour/email and 20/hour/IP.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '202': { description: Request accepted without account-existence disclosure }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /auth/password-resets:
+    post:
+      tags: [Authentication]
+      summary: Reset password using recovery token
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetRequest' }
+      responses:
+        '204': { description: Password changed, token consumed, all sessions revoked }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /account/password:
+    put:
+      tags: [Account]
+      summary: Change local password
+      operationId: changePassword
+      description: Requires current password and reauthentication within 10 minutes; revokes other sessions.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ChangePasswordRequest' }
+      responses:
+        '204': { description: Password changed }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /account/email-change-requests:
+    post:
+      tags: [Account]
+      summary: Request primary email change
+      operationId: requestEmailChange
+      description: Requires reauthentication within 10 minutes. Confirmation link expires after 30 minutes, is single-use, and is limited to five sends/hour/new email and 20/hour/source IP. Existing primary email stays active until new address verification. Resend daily/monthly caps apply.
+      security: [{ sessionCookie: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailChangeRequest' }
+      responses:
+        '202': { description: Confirmation sent when eligible }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '503': { $ref: '#/components/responses/ServerError' }
+  /account/email-changes/verify:
+    post:
+      tags: [Account]
+      summary: Confirm primary email change
+      operationId: verifyEmailChange
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token: { type: string, minLength: 1 }
+      responses:
+        '204': { description: Token consumed, email changed atomically, old address released, old and new addresses notified }
+        '400': { $ref: '#/components/responses/BadRequest' }
+  /account/disable:
+    post:
+      tags: [Account]
+      summary: Disable current account
+      operationId: disableAccount
+      description: Requires reauthentication within 10 minutes; revokes sessions and blocks new product sessions, including after Auth0 authentication.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '204': { description: Account disabled, sessions revoked, and session cookie cleared }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /account/deletion-requests:
+    post:
+      tags: [Account]
+      summary: Request account deletion
+      operationId: requestAccountDeletion
+      description: Requires reauthentication within 10 minutes; revoke sessions, clear session cookie, and schedule content purge for 30 days after the request. API-owned worker processes due requests; the account remains a minimal tombstone.
+      security: [{ sessionCookie: [] }]
+      responses:
+        '202':
+          description: Deletion scheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, purgeAt]
+                properties:
+                  status: { type: string, const: deletion_pending }
+                  purgeAt: { type: string, format: date-time }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: __Host-aimeeting_session
+      description: Opaque, HttpOnly, Secure cookie. SameSite=Lax when same-site; cross-site requires SameSite=None plus CSRF token and exact allow-listed Origin validation. Production uses a host-only __Host- cookie where deployment permits.
+  headers:
+    SessionCookie:
+      description: Opaque session secret; Secure, HttpOnly, Path=/, SameSite=Lax when same-site. Cross-site deployment uses SameSite=None with strict CSRF and Origin checks.
+      schema: { type: string }
+  parameters:
+    SessionId:
+      name: sessionId
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    BadRequest:
+      description: Invalid input or invalid/expired/used/exhausted challenge; generic message
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: Missing/invalid session or generic credential failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Conflict such as last usable sign-in method or identity already bound elsewhere
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    RateLimited:
+      description: Rate limit exceeded; may include Retry-After
+      headers:
+        Retry-After: { schema: { type: integer, minimum: 0 } }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+  schemas:
+    RegistrationRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, passwordConfirmation]
+      properties:
+        email: { type: string, format: email }
+        password: { $ref: '#/components/schemas/Password' }
+        passwordConfirmation: { type: string, minLength: 1 }
+        displayName: { type: string }
+    VerifyEmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email, code]
+      properties:
+        email: { type: string, format: email }
+        code: { type: string, pattern: '^[0-9]{6}$' }
+    EmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    SignInRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 1 }
+    ReauthenticationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        currentPassword: { type: string, minLength: 1, description: Required for a local credential reauthentication. }
+        provider: { type: string, enum: [google, microsoft], description: Selects an already-linked federated identity for fresh Auth0 authentication. }
+      oneOf:
+        - required: [currentPassword]
+        - required: [provider]
+    ReauthenticationRedirect:
+      type: object
+      required: [status, authorizationUrl]
+      properties:
+        status: { type: string, const: reauthentication_required }
+        authorizationUrl: { type: string, format: uri }
+    PasswordResetRequest:
+      type: object
+      additionalProperties: false
+      required: [token, newPassword, passwordConfirmation]
+      properties:
+        token: { type: string, minLength: 1 }
+        newPassword: { $ref: '#/components/schemas/Password' }
+        passwordConfirmation: { type: string, minLength: 1 }
+    ChangePasswordRequest:
+      type: object
+      additionalProperties: false
+      required: [currentPassword, newPassword, passwordConfirmation]
+      properties:
+        currentPassword: { type: string, minLength: 1 }
+        newPassword: { $ref: '#/components/schemas/Password' }
+        passwordConfirmation: { type: string, minLength: 1 }
+    EmailChangeRequest:
+      type: object
+      additionalProperties: false
+      required: [newEmail]
+      properties:
+        newEmail: { type: string, format: email }
+    Password:
+      type: string
+      minLength: 8
+      description: Must include uppercase, lowercase, digit, and special character. No product maximum; exact comparison, Unicode and spaces accepted, special means outside Unicode letter/number classes.
+    VerificationRequired:
+      type: object
+      required: [status, expiresAt, resendAvailableAt]
+      properties:
+        status: { type: string, const: verification_required }
+        expiresAt: { type: string, format: date-time }
+        resendAvailableAt: { type: string, format: date-time }
+    AccountSession:
+      type: object
+      required: [account, session]
+      properties:
+        account:
+          type: object
+          required: [id, displayName, primaryEmail, identities]
+          properties:
+            id: { type: string, description: Opaque product account ID; informational, not an authorization scope input }
+            displayName: { type: string }
+            primaryEmail:
+              type: object
+              required: [address, verified]
+              properties:
+                address: { type: string, format: email }
+                verified: { type: boolean }
+            identities:
+              type: array
+              items: { $ref: '#/components/schemas/Identity' }
+        session:
+          type: object
+          required: [idleExpiresAt, absoluteExpiresAt]
+          properties:
+            idleExpiresAt: { type: string, format: date-time }
+            absoluteExpiresAt: { type: string, format: date-time }
+    Identity:
+      type: object
+      required: [id, provider, label]
+      properties:
+        id: { type: string, description: Opaque identity ID; never a client-selected authorization scope }
+        provider: { type: string, enum: [google, microsoft, local] }
+        label: { type: string, description: Masked display label }
+        verified: { type: boolean }
+        linkedAt: { type: string, format: date-time }
+    SessionSummary:
+      type: object
+      required: [id, createdAt, lastSeenAt, idleExpiresAt, absoluteExpiresAt]
+      properties:
+        id: { type: string, description: Opaque session identifier, not the session secret }
+        createdAt: { type: string, format: date-time }
+        lastSeenAt: { type: string, format: date-time }
+        idleExpiresAt: { type: string, format: date-time }
+        absoluteExpiresAt: { type: string, format: date-time }
+        userAgentLabel: { type: string }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, requestId]
+          properties:
+            code: { type: string }
+            message: { type: string, description: Must not disclose account existence, credentials, provider tokens, or another user's resources }
+            requestId: { type: string }

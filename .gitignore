@@ -7,6 +7,11 @@ coverage/
 out/
 .hindsight-venv/
 .uv-cache/
+src/generated/prisma/
+*.tsbuildinfo
+prisma7.config.js
+prisma7.config.d.ts
+prisma7.config.js.map
 
 # Local environment and secrets
 .env
@@ -30,3 +35,4 @@ Thumbs.db
 !.vscode/extensions.json
 !.vscode/settings.json
 start-hindsight.ps1
+.env

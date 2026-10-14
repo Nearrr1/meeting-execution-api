@@ -1,0 +1,38 @@
+{
+  "name": "meeting-execution-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.15.0"
+  },
+  "scripts": {
+    "build": "nest build && node rewrite-aliases.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.build.json",
+    "db:generate": "prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "start": "node dist/main.js",
+    "start:dev": "nest start --watch"
+  },
+  "dependencies": {
+    "@nestjs/common": "12.1.2",
+    "@nestjs/core": "12.1.2",
+    "@nestjs/platform-express": "12.1.1",
+    "@nestjs/swagger": "12.0.2",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
+    "class-transformer": "0.5.1",
+    "class-validator": "0.14.2",
+    "dotenv": "18.0.7",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "12.0.8",
+    "@types/node": "^24.9.1",
+    "prisma": "7.10.0",
+    "typescript": "5.9.3"
+  }
+}

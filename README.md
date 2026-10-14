@@ -4,12 +4,12 @@ Backend repository for the AI Meeting → Execution product. The backend will ow
 
 ## Status
 
-Bootstrap only. Product behavior, API endpoints, database models, and runtime services have not been implemented. Requirements must be specified and reviewed before implementation.
+The NestJS API now implements local registration, email OTP verification/resend, sign-in, password recovery/reset, local reauthentication, password changes, email changes, account disablement, 30-day deletion scheduling, CSRF bootstrap, and session inspection/revocation. A PostgreSQL-locked API worker purges due account data and retains a minimal tombstone. OIDC and identity linking remain pending. Live OIDC validation follows after provider configuration is approved.
 
 ## Repository boundaries
 
 - Public API base path: `/api/v1`.
-- OpenAPI documentation is planned at `/docs`.
+- OpenAPI source is [`openapi.yaml`](openapi.yaml), served interactively at `/docs`.
 - The backend is the source of truth for application APIs and persistent application state.
 - PostgreSQL is the planned authoritative transactional store. Redis, BullMQ, pgvector, AI providers, Hindsight, and external integrations remain future architecture topics.
 - AI-generated content is a proposal until a user approves it. Do not trigger irreversible external actions from unverified output.
@@ -19,6 +19,8 @@ Bootstrap only. Product behavior, API endpoints, database models, and runtime se
 Product requirements, SRS, cross-repository architecture, and ADRs live in the sibling `meeting-execution-specs` repository. The API owns and implements the public API contract; its planned OpenAPI documentation is served at `/docs`.
 
 ## Local setup and commands
+
+The application requires Node.js 24 LTS. Install dependencies, configure `.env`, generate Prisma Client, apply local migrations, then start the development server with `npm run start:dev`. The OpenAPI contract is at `http://localhost:3000/docs`. Browser clients must first fetch `/api/v1/auth/csrf-token` with credentials, then send the returned token in `X-CSRF-Token` on mutating requests.
 
 The API application is still a bootstrap. Hindsight is installed separately as a local development service and may be used now as project memory for the AI coding assistant, retaining curated architecture/spec context across sessions. It is not wired into API requests; the Phase 1 product workflow remains independent of Hindsight. End-user Second Brain integration is a later Phase 2 feature. The OpenAI configuration below applies only to this local Hindsight service; it does not select the product's meeting-analysis provider.
 
