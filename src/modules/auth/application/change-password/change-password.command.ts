@@ -1,4 +1,9 @@
-import type { ChangePasswordDto } from '../../auth.dto.ts';
+import type { ChangePasswordDto } from './change-password.dto.ts';
 export class ChangePasswordCommand {
-  constructor(readonly accountId: string, readonly sessionId: string, readonly input: ChangePasswordDto, readonly requestId: string) {}
+  constructor(
+    readonly accountId: string,
+    readonly sessionId: string,
+    readonly input: ChangePasswordDto,
+    readonly requestId: string,
+  ) {}
 }

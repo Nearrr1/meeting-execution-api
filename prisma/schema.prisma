@@ -8,11 +8,11 @@ datasource db {
 }
 
 enum AccountStatus {
-  PENDING_EMAIL     @map("pending_email")
-  ACTIVE            @map("active")
-  DISABLED          @map("disabled")
-  DELETION_PENDING  @map("deletion_pending")
-  DELETED           @map("deleted")
+  PENDING_EMAIL    @map("pending_email")
+  ACTIVE           @map("active")
+  DISABLED         @map("disabled")
+  DELETION_PENDING @map("deletion_pending")
+  DELETED          @map("deleted")
 
   @@map("account_status")
 }
@@ -32,23 +32,24 @@ enum DeletionRequestStatus {
 }
 
 model Account {
-  id             String         @id @default(uuid()) @db.Uuid
-  displayName    String         @map("display_name")
-  status         AccountStatus  @default(PENDING_EMAIL)
-  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?      @map("deleted_at") @db.Timestamptz(6)
-  deletionRequestedAt DateTime? @map("deletion_requested_at") @db.Timestamptz(6)
-  purgeAt        DateTime?      @map("purge_at") @db.Timestamptz(6)
-  personalSpace  PersonalSpace?
-  emails         AccountEmail[]
-  localCredential LocalCredential?
-  challenges     AuthChallenge[]
-  sessions       AuthSession[]
+  id                  String                  @id @default(uuid()) @db.Uuid
+  displayName         String                  @map("display_name")
+  status              AccountStatus           @default(PENDING_EMAIL)
+  createdAt           DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt           DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  deletionRequestedAt DateTime?               @map("deletion_requested_at") @db.Timestamptz(6)
+  purgeAt             DateTime?               @map("purge_at") @db.Timestamptz(6)
+  personalSpace       PersonalSpace?
+  emails              AccountEmail[]
+  localCredential     LocalCredential?
+  challenges          AuthChallenge[]
+  sessions            AuthSession[]
   federatedIdentities FederatedIdentity[]
-  auditEvents    SecurityAuditEvent[]
+  auditEvents         SecurityAuditEvent[]
   emailChangeRequests EmailChangeRequest[]
-  deletionRequest AccountDeletionRequest?
+  oidcTransactions    OidcTransaction[]
+  deletionRequest     AccountDeletionRequest?
 
   @@map("accounts")
 }
@@ -91,10 +92,10 @@ model AccountEmail {
 }
 
 model LocalCredential {
-  accountId  String   @id @map("account_id") @db.Uuid
-  passwordHash String @map("password_hash")
-  changedAt  DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
-  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accountId    String   @id @map("account_id") @db.Uuid
+  passwordHash String   @map("password_hash")
+  changedAt    DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  account      Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@map("local_credentials")
 }
@@ -118,36 +119,58 @@ model AuthChallenge {
 }
 
 model AuthSession {
-  id               String    @id @default(uuid()) @db.Uuid
-  accountId        String    @map("account_id") @db.Uuid
-  tokenHash        String    @unique @map("token_hash") @db.Char(64)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  lastSeenAt       DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
-  idleExpiresAt    DateTime  @map("idle_expires_at") @db.Timestamptz(6)
-  absoluteExpiresAt DateTime @map("absolute_expires_at") @db.Timestamptz(6)
-  reauthenticatedAt DateTime? @map("reauthenticated_at") @db.Timestamptz(6)
-  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
-  userAgentLabel   String?   @map("user_agent_label")
-  account          Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id                String            @id @default(uuid()) @db.Uuid
+  accountId         String            @map("account_id") @db.Uuid
+  tokenHash         String            @unique @map("token_hash") @db.Char(64)
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt        DateTime          @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  idleExpiresAt     DateTime          @map("idle_expires_at") @db.Timestamptz(6)
+  absoluteExpiresAt DateTime          @map("absolute_expires_at") @db.Timestamptz(6)
+  reauthenticatedAt DateTime?         @map("reauthenticated_at") @db.Timestamptz(6)
+  revokedAt         DateTime?         @map("revoked_at") @db.Timestamptz(6)
+  userAgentLabel    String?           @map("user_agent_label")
+  account           Account           @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  oidcTransactions  OidcTransaction[]
 
   @@index([accountId, revokedAt])
   @@map("auth_sessions")
 }
 
 model FederatedIdentity {
-  id                String   @id @default(uuid()) @db.Uuid
-  accountId         String   @map("account_id") @db.Uuid
-  issuer            String
-  subject           String
-  provider          String
-  providerEmail     String?  @map("provider_email")
-  providerEmailVerified Boolean @default(false) @map("provider_email_verified")
-  linkedAt          DateTime @default(now()) @map("linked_at") @db.Timestamptz(6)
-  account           Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  id                    String   @id @default(uuid()) @db.Uuid
+  accountId             String   @map("account_id") @db.Uuid
+  issuer                String
+  subject               String
+  provider              String
+  providerEmail         String?  @map("provider_email")
+  providerEmailVerified Boolean  @default(false) @map("provider_email_verified")
+  linkedAt              DateTime @default(now()) @map("linked_at") @db.Timestamptz(6)
+  account               Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@unique([issuer, subject])
   @@index([accountId])
   @@map("federated_identities")
+}
+
+model OidcTransaction {
+  id                 String       @id @default(uuid()) @db.Uuid
+  stateHash          String       @unique @map("state_hash") @db.Char(64)
+  browserBindingHash String       @map("browser_binding_hash") @db.Char(64)
+  provider           String
+  intent             String
+  accountId          String?      @map("account_id") @db.Uuid
+  sessionId          String?      @map("session_id") @db.Uuid
+  secretCiphertext   String       @map("secret_ciphertext")
+  returnTo           String       @map("return_to")
+  expiresAt          DateTime     @map("expires_at") @db.Timestamptz(6)
+  consumedAt         DateTime?    @map("consumed_at") @db.Timestamptz(6)
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  account            Account?     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  session            AuthSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt])
+  @@index([accountId, sessionId])
+  @@map("oidc_transactions")
 }
 
 model RateLimitEvent {
@@ -170,16 +193,16 @@ model EmailQuotaWindow {
 }
 
 model EmailChangeRequest {
-  id                    String    @id @default(uuid()) @db.Uuid
-  accountId             String    @map("account_id") @db.Uuid
-  newEmailSubmitted     String    @map("new_email_submitted")
-  newEmailNormalized    String    @map("new_email_normalized")
+  id                     String    @id @default(uuid()) @db.Uuid
+  accountId              String    @map("account_id") @db.Uuid
+  newEmailSubmitted      String    @map("new_email_submitted")
+  newEmailNormalized     String    @map("new_email_normalized")
   pendingEmailNormalized String?   @unique @map("pending_email_normalized")
-  tokenHash             String    @map("token_hash") @db.Char(64)
-  expiresAt             DateTime  @map("expires_at") @db.Timestamptz(6)
-  consumedAt            DateTime? @map("consumed_at") @db.Timestamptz(6)
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  account               Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tokenHash              String    @map("token_hash") @db.Char(64)
+  expiresAt              DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt             DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  account                Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId, consumedAt, createdAt])
   @@index([expiresAt])

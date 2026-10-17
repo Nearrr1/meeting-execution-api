@@ -44,13 +44,19 @@ export class SessionGuard implements CanActivate {
       },
     });
     if (
-      !record || record.revokedAt || record.idleExpiresAt <= now || record.absoluteExpiresAt <= now ||
-      record.account.status !== 'ACTIVE' || !record.account.emails[0]?.verifiedAt
+      !record ||
+      record.revokedAt ||
+      record.idleExpiresAt <= now ||
+      record.absoluteExpiresAt <= now ||
+      record.account.status !== 'ACTIVE' ||
+      !record.account.emails[0]?.verifiedAt
     ) {
       throw new UnauthorizedException({ code: ApiErrorCode.SESSION_INVALID });
     }
 
-    const idleExpiresAt = new Date(Math.min(now.getTime() + IDLE_LIFETIME_MS, record.absoluteExpiresAt.getTime()));
+    const idleExpiresAt = new Date(
+      Math.min(now.getTime() + IDLE_LIFETIME_MS, record.absoluteExpiresAt.getTime()),
+    );
     const refreshed = await this.prisma.authSession.updateMany({
       where: {
         id: record.id,
@@ -84,6 +90,17 @@ export class SessionGuard implements CanActivate {
       absoluteExpiresAt: record.absoluteExpiresAt,
     };
     return true;
+  }
+}
+
+@Injectable()
+export class OptionalSessionGuard implements CanActivate {
+  constructor(private readonly sessions: SessionGuard) {}
+
+  canActivate(context: ExecutionContext): Promise<boolean> | boolean {
+    const request = context.switchToHttp().getRequest<Request>();
+    if (!cookieValue(request, sessionCookieName())) return true;
+    return this.sessions.canActivate(context);
   }
 }
 

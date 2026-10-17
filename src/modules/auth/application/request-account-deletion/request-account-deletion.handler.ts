@@ -4,5 +4,7 @@ import { RequestAccountDeletionCommand } from './request-account-deletion.comman
 @Injectable()
 export class RequestAccountDeletionHandler {
   constructor(private readonly auth: AuthService) {}
-  execute(command: RequestAccountDeletionCommand) { return this.auth.requestAccountDeletion(command.accountId, command.sessionId, command.requestId); }
+  execute(command: RequestAccountDeletionCommand) {
+    return this.auth.requestAccountDeletion(command.accountId, command.sessionId, command.requestId);
+  }
 }

@@ -7,9 +7,16 @@ import { DisableAccountHandler } from './disable-account.handler.ts';
 @Controller()
 export class DisableAccountEndpoint {
   constructor(private readonly handler: DisableAccountHandler) {}
-  @Post('account/disable') @HttpCode(204) @UseGuards(SessionGuard)
-  async disable(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response): Promise<void> {
-    await this.handler.execute(new DisableAccountCommand(request.authSession!.accountId, request.authSession!.id, request.requestId!));
+  @Post('account/disable')
+  @HttpCode(204)
+  @UseGuards(SessionGuard)
+  async disable(
+    @Req() request: AuthenticatedRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<void> {
+    await this.handler.execute(
+      new DisableAccountCommand(request.authSession!.accountId, request.authSession!.id, request.requestId!),
+    );
     response.setHeader('Set-Cookie', serializeSessionCookie('', 0));
   }
 }

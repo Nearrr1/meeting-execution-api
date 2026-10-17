@@ -1,20 +1,77 @@
 export { AccountLifecycleService } from './account-lifecycle/index.ts';
-export { CsrfTokenCommand, CsrfTokenEndpoint, CsrfTokenHandler, CsrfTokenService } from './csrf-token/index.ts';
-export { ChangePasswordCommand, ChangePasswordEndpoint, ChangePasswordHandler } from './change-password/index.ts';
-export { DisableAccountCommand, DisableAccountEndpoint, DisableAccountHandler } from './disable-account/index.ts';
-export { GetCurrentSessionCommand, GetCurrentSessionEndpoint, GetCurrentSessionHandler } from './get-current-session/index.ts';
+export {
+  CsrfTokenCommand,
+  CsrfTokenEndpoint,
+  CsrfTokenHandler,
+  CsrfTokenService,
+} from './csrf-token/index.ts';
+export {
+  ChangePasswordCommand,
+  ChangePasswordEndpoint,
+  ChangePasswordHandler,
+} from './change-password/index.ts';
+export {
+  DisableAccountCommand,
+  DisableAccountEndpoint,
+  DisableAccountHandler,
+} from './disable-account/index.ts';
+export {
+  GetCurrentSessionCommand,
+  GetCurrentSessionEndpoint,
+  GetCurrentSessionHandler,
+} from './get-current-session/index.ts';
 export { ListSessionsCommand, ListSessionsEndpoint, ListSessionsHandler } from './list-sessions/index.ts';
-export { ReauthenticateCommand, ReauthenticateEndpoint, ReauthenticateHandler } from './reauthenticate/index.ts';
+export {
+  ReauthenticateCommand,
+  ReauthenticateEndpoint,
+  ReauthenticateHandler,
+  ReauthenticationService,
+} from './reauthenticate/index.ts';
 export { RegisterCommand, RegisterEndpoint, RegisterHandler } from './register/index.ts';
-export { RequestAccountDeletionCommand, RequestAccountDeletionEndpoint, RequestAccountDeletionHandler } from './request-account-deletion/index.ts';
-export { RequestEmailChangeCommand, RequestEmailChangeEndpoint, RequestEmailChangeHandler } from './request-email-change/index.ts';
-export { RequestPasswordRecoveryCommand, RequestPasswordRecoveryEndpoint, RequestPasswordRecoveryHandler } from './request-password-recovery/index.ts';
-export { ResendEmailOtpCommand, ResendEmailOtpEndpoint, ResendEmailOtpHandler } from './resend-email-otp/index.ts';
+export {
+  RequestAccountDeletionCommand,
+  RequestAccountDeletionEndpoint,
+  RequestAccountDeletionHandler,
+} from './request-account-deletion/index.ts';
+export {
+  RequestEmailChangeCommand,
+  RequestEmailChangeEndpoint,
+  RequestEmailChangeHandler,
+} from './request-email-change/index.ts';
+export {
+  RequestPasswordRecoveryCommand,
+  RequestPasswordRecoveryEndpoint,
+  RequestPasswordRecoveryHandler,
+} from './request-password-recovery/index.ts';
+export {
+  ResendEmailOtpCommand,
+  ResendEmailOtpEndpoint,
+  ResendEmailOtpHandler,
+} from './resend-email-otp/index.ts';
 export { ResetPasswordCommand, ResetPasswordEndpoint, ResetPasswordHandler } from './reset-password/index.ts';
-export { RevokeCurrentSessionCommand, RevokeCurrentSessionEndpoint, RevokeCurrentSessionHandler } from './revoke-current-session/index.ts';
+export {
+  RevokeCurrentSessionCommand,
+  RevokeCurrentSessionEndpoint,
+  RevokeCurrentSessionHandler,
+} from './revoke-current-session/index.ts';
 export { RevokeSessionCommand, RevokeSessionEndpoint, RevokeSessionHandler } from './revoke-session/index.ts';
 export { SignInCommand, SignInEndpoint, SignInHandler } from './sign-in/index.ts';
 export { VerifyEmailCommand, VerifyEmailEndpoint, VerifyEmailHandler } from './verify-email/index.ts';
-export { VerifyEmailChangeCommand, VerifyEmailChangeEndpoint, VerifyEmailChangeHandler } from './verify-email-change/index.ts';
+export {
+  VerifyEmailChangeCommand,
+  VerifyEmailChangeEndpoint,
+  VerifyEmailChangeHandler,
+} from './verify-email-change/index.ts';
 export { EmailChangeService } from './email-change/index.ts';
 export { AuthSessionService } from './sessions/index.ts';
+export {
+  IdentityListEndpoint,
+  IdentityListHandler,
+  IdentityUnlinkEndpoint,
+  IdentityUnlinkHandler,
+  OidcCallbackEndpoint,
+  OidcCallbackHandler,
+  OidcService,
+  OidcStartEndpoint,
+  OidcStartHandler,
+} from './oidc/index.ts';

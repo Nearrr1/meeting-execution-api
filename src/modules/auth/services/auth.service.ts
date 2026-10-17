@@ -2,7 +2,7 @@ import {
   BadRequestException,
   Injectable,
   InternalServerErrorException,
-  UnauthorizedException
+  UnauthorizedException,
 } from '@nestjs/common';
 import type { ScryptOptions } from 'node:crypto';
 import {
@@ -16,7 +16,15 @@ import {
 
 import { ChallengePurpose, Prisma } from '../../../generated/prisma/client.ts';
 
-import { ChangePasswordInput, PasswordResetInput, RegistrationInput, RegistrationResult, SignInResult, VerifyEmailInput, VerifyEmailResult } from '../auth.types.ts';
+import {
+  ChangePasswordInput,
+  PasswordResetInput,
+  RegistrationInput,
+  RegistrationResult,
+  SignInResult,
+  VerifyEmailInput,
+  VerifyEmailResult,
+} from '../auth.types.ts';
 import { AccountLifecycleService } from '../application/account-lifecycle/index.ts';
 import { AuthSessionService } from '../application/sessions/index.ts';
 import { EmailChangeService, type EmailChangeInput } from '../application/email-change/index.ts';
@@ -24,6 +32,7 @@ import type { AuthenticatedRequest } from '../guards/index.ts';
 import { ApiErrorCode, createSessionSecret, TimeUnitMs } from '#common';
 import { PrismaService, withSerializableTransaction } from '#database';
 import { EmailDeliveryService, EmailQuotaBlocked, EmailQuotaService } from '#email';
+import { getRuntimeConfig } from '#config';
 
 const OTP_TTL_MS = 10 * TimeUnitMs.MINUTE;
 const PASSWORD_RESET_TTL_MS = 30 * TimeUnitMs.MINUTE;
@@ -35,8 +44,6 @@ const SIGN_IN_IP_LIMIT = 20;
 const SESSION_IDLE_MS = 7 * TimeUnitMs.DAY;
 const SESSION_ABSOLUTE_MS = 30 * TimeUnitMs.DAY;
 const MAX_PASSWORD_CODEPOINTS = 64 * 1024;
-
-
 
 @Injectable()
 export class AuthService {
@@ -73,7 +80,13 @@ export class AuthService {
     return this.sessions.revokeOwned(accountId, sessionId);
   }
 
-  requestEmailChange(accountId: string, sessionId: string, input: EmailChangeInput, sourceIp: string, requestId: string): Promise<void> {
+  requestEmailChange(
+    accountId: string,
+    sessionId: string,
+    input: EmailChangeInput,
+    sourceIp: string,
+    requestId: string,
+  ): Promise<void> {
     return this.emailChange.request(accountId, sessionId, input, sourceIp, requestId);
   }
 
@@ -142,7 +155,11 @@ export class AuthService {
       });
     } catch (error) {
       if (error instanceof EmailQuotaBlocked || this.isUniqueConflict(error)) {
-        return { status: 'verification_required', expiresAt: expiresAt.toISOString(), resendAvailableAt: resendAvailableAt.toISOString() };
+        return {
+          status: 'verification_required',
+          expiresAt: expiresAt.toISOString(),
+          resendAvailableAt: resendAvailableAt.toISOString(),
+        };
       }
       throw error;
     }
@@ -154,7 +171,11 @@ export class AuthService {
         await this.recordDeliveryFailure(accountId, requestId);
       }
     }
-    return { status: 'verification_required', expiresAt: expiresAt.toISOString(), resendAvailableAt: resendAvailableAt.toISOString() };
+    return {
+      status: 'verification_required',
+      expiresAt: expiresAt.toISOString(),
+      resendAvailableAt: resendAvailableAt.toISOString(),
+    };
   }
 
   async resendOtp(emailInput: string, sourceIp: string, requestId: string): Promise<void> {
@@ -235,8 +256,12 @@ export class AuthService {
         : null;
 
       if (
-        !email || email.verifiedAt || email.account.status !== 'PENDING_EMAIL' || !challenge ||
-        challenge.expiresAt <= now || challenge.failedAttempts >= 5
+        !email ||
+        email.verifiedAt ||
+        email.account.status !== 'PENDING_EMAIL' ||
+        !challenge ||
+        challenge.expiresAt <= now ||
+        challenge.failedAttempts >= 5
       ) {
         if (challenge && challenge.expiresAt > now && challenge.failedAttempts < 5) {
           await transaction.authChallenge.updateMany({
@@ -284,11 +309,13 @@ export class AuthService {
             id: email.accountId,
             displayName: email.account.displayName,
             primaryEmail: { address: email.addressSubmitted, verified: true },
-            identities: [{
-              id: `local:${email.accountId}`,
-              provider: 'local',
-              label: maskEmail(email.addressSubmitted),
-            }],
+            identities: [
+              {
+                id: `local:${email.accountId}`,
+                provider: 'local',
+                label: maskEmail(email.addressSubmitted),
+              },
+            ],
           },
           session: { idleExpiresAt, absoluteExpiresAt },
         },
@@ -299,7 +326,12 @@ export class AuthService {
     return result;
   }
 
-  async signIn(emailInput: string, password: string, sourceIp: string, requestId: string): Promise<SignInResult> {
+  async signIn(
+    emailInput: string,
+    password: string,
+    sourceIp: string,
+    requestId: string,
+  ): Promise<SignInResult> {
     const normalizedEmail = emailInput.trim().toLowerCase();
     const emailDigest = this.identifierDigest(`signin-email:${normalizedEmail}`);
     const ipDigest = this.identifierDigest(`signin-ip:${sourceIp || 'unknown'}`);
@@ -381,10 +413,18 @@ export class AuthService {
         const windowStart = new Date(now.getTime() - SEND_WINDOW_MS);
         const [emailSends, ipSends] = await Promise.all([
           transaction.rateLimitEvent.count({
-            where: { scope: 'recovery_email_send', identifierDigest: emailDigest, createdAt: { gt: windowStart } },
+            where: {
+              scope: 'recovery_email_send',
+              identifierDigest: emailDigest,
+              createdAt: { gt: windowStart },
+            },
           }),
           transaction.rateLimitEvent.count({
-            where: { scope: 'recovery_source_ip_send', identifierDigest: ipDigest, createdAt: { gt: windowStart } },
+            where: {
+              scope: 'recovery_source_ip_send',
+              identifierDigest: ipDigest,
+              createdAt: { gt: windowStart },
+            },
           }),
         ]);
         if (emailSends >= 5 || ipSends >= 20) return;
@@ -400,7 +440,8 @@ export class AuthService {
           where: { addressNormalized: normalizedEmail },
           include: { account: { include: { localCredential: true } } },
         });
-        if (!email?.verifiedAt || email?.account?.status !== 'ACTIVE' || !email?.account?.localCredential) return;
+        if (!email?.verifiedAt || email?.account?.status !== 'ACTIVE' || !email?.account?.localCredential)
+          return;
 
         await this.emailQuota.reserve(transaction, now);
         await transaction.authChallenge.updateMany({
@@ -431,7 +472,13 @@ export class AuthService {
       const resetUrl = this.passwordResetUrl(token);
       await this.emailDelivery.sendPasswordReset(delivery.address, resetUrl);
       await this.prisma.securityAuditEvent.create({
-        data: { accountId: delivery.accountId, eventType: 'password_recovery', outcome: 'requested', requestId, metadata: {} },
+        data: {
+          accountId: delivery.accountId,
+          eventType: 'password_recovery',
+          outcome: 'requested',
+          requestId,
+          metadata: {},
+        },
       });
     } catch {
       await this.recordDeliveryFailure(delivery.accountId, requestId, 'password_recovery_email_delivery');
@@ -499,10 +546,16 @@ export class AuthService {
     });
   }
 
-  async reauthenticateLocal(accountId: string, sessionId: string, password: string, requestId: string): Promise<void> {
+  async reauthenticateLocal(
+    accountId: string,
+    sessionId: string,
+    password: string,
+    requestId: string,
+  ): Promise<void> {
     const credential = await this.prisma.localCredential.findUnique({ where: { accountId } });
     const passwordMatches = await verifyPassword(password, credential?.passwordHash ?? DUMMY_PASSWORD_HASH);
-    if (!credential || !passwordMatches) throw new UnauthorizedException({ code: ApiErrorCode.CREDENTIALS_INVALID });
+    if (!credential || !passwordMatches)
+      throw new UnauthorizedException({ code: ApiErrorCode.CREDENTIALS_INVALID });
 
     const now = new Date();
     await withSerializableTransaction(this.prisma, async (transaction) => {
@@ -532,8 +585,12 @@ export class AuthService {
       throw new BadRequestException({ code: ApiErrorCode.PASSWORD_CONFIRMATION_MISMATCH });
     }
     const credential = await this.prisma.localCredential.findUnique({ where: { accountId } });
-    const passwordMatches = await verifyPassword(input.currentPassword, credential?.passwordHash ?? DUMMY_PASSWORD_HASH);
-    if (!credential || !passwordMatches) throw new UnauthorizedException({ code: ApiErrorCode.CREDENTIALS_INVALID });
+    const passwordMatches = await verifyPassword(
+      input.currentPassword,
+      credential?.passwordHash ?? DUMMY_PASSWORD_HASH,
+    );
+    if (!credential || !passwordMatches)
+      throw new UnauthorizedException({ code: ApiErrorCode.CREDENTIALS_INVALID });
 
     const passwordHash = await hashPassword(input.newPassword);
     const now = new Date();
@@ -604,16 +661,7 @@ export class AuthService {
   }
 
   private passwordResetUrl(token: string): string {
-    const configuredUrl = process.env.PASSWORD_RESET_URL;
-    if (!configuredUrl) throw new InternalServerErrorException({ code: ApiErrorCode.PASSWORD_RECOVERY_NOT_CONFIGURED });
-    const url = new URL(configuredUrl);
-    const allowedOrigins = (process.env.WEB_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean);
-    if (
-      !allowedOrigins.includes(url.origin) || url.username || url.password || url.hash ||
-      (process.env.NODE_ENV === 'production' && url.protocol !== 'https:')
-    ) {
-      throw new InternalServerErrorException({ code: ApiErrorCode.PASSWORD_RECOVERY_NOT_CONFIGURED });
-    }
+    const url = new URL(getRuntimeConfig().passwordResetUrl);
     url.searchParams.set('token', token);
     return url.toString();
   }
@@ -622,7 +670,11 @@ export class AuthService {
     const windowStart = new Date(now.getTime() - SIGN_IN_WINDOW_MS);
     const [emailFailures, ipFailures] = await Promise.all([
       this.prisma.rateLimitEvent.count({
-        where: { scope: 'signin_email_failure', identifierDigest: emailDigest, createdAt: { gt: windowStart } },
+        where: {
+          scope: 'signin_email_failure',
+          identifierDigest: emailDigest,
+          createdAt: { gt: windowStart },
+        },
       }),
       this.prisma.rateLimitEvent.count({
         where: { scope: 'signin_ip_failure', identifierDigest: ipDigest, createdAt: { gt: windowStart } },
@@ -642,7 +694,11 @@ export class AuthService {
       const windowStart = new Date(now.getTime() - SIGN_IN_WINDOW_MS);
       const [emailFailures, ipFailures] = await Promise.all([
         transaction.rateLimitEvent.count({
-          where: { scope: 'signin_email_failure', identifierDigest: emailDigest, createdAt: { gt: windowStart } },
+          where: {
+            scope: 'signin_email_failure',
+            identifierDigest: emailDigest,
+            createdAt: { gt: windowStart },
+          },
         }),
         transaction.rateLimitEvent.count({
           where: { scope: 'signin_ip_failure', identifierDigest: ipDigest, createdAt: { gt: windowStart } },
@@ -661,25 +717,23 @@ export class AuthService {
   }
 
   private otpDigest(email: string, code: string): string {
-    const key = process.env.OTP_HMAC_KEY;
-    if (!key || Buffer.byteLength(key) < 32) {
-      throw new InternalServerErrorException({ code: ApiErrorCode.AUTHENTICATION_NOT_CONFIGURED });
-    }
+    const key = getRuntimeConfig().otpHmacKey;
     return createHmac('sha256', key).update(`${email}\0${code}`).digest('hex');
   }
 
   private identifierDigest(value: string): string {
-    const key = process.env.OTP_HMAC_KEY;
-    if (!key || Buffer.byteLength(key) < 32) {
-      throw new InternalServerErrorException({ code: ApiErrorCode.AUTHENTICATION_NOT_CONFIGURED });
-    }
+    const key = getRuntimeConfig().otpHmacKey;
     return createHmac('sha256', key).update(value).digest('hex');
   }
 
   private validatePassword(password: string): void {
     const characters = Array.from(password);
-    const valid = characters.length >= 8 && characters.length <= MAX_PASSWORD_CODEPOINTS &&
-      /\p{Lu}/u.test(password) && /\p{Ll}/u.test(password) && /\p{N}/u.test(password) &&
+    const valid =
+      characters.length >= 8 &&
+      characters.length <= MAX_PASSWORD_CODEPOINTS &&
+      /\p{Lu}/u.test(password) &&
+      /\p{Ll}/u.test(password) &&
+      /\p{N}/u.test(password) &&
       /[^\p{L}\p{N}]/u.test(password);
     if (!valid) throw new BadRequestException({ code: ApiErrorCode.PASSWORD_POLICY_FAILED });
   }
@@ -731,7 +785,14 @@ const DUMMY_PASSWORD_HASH = `scrypt$32768$8$1$${Buffer.alloc(16).toString('base6
 
 async function verifyPassword(password: string, encoded: string): Promise<boolean> {
   const [algorithm, cost, blockSize, parallelization, saltText, keyText] = encoded.split('$');
-  if (algorithm !== 'scrypt' || cost !== '32768' || blockSize !== '8' || parallelization !== '1' || !saltText || !keyText) {
+  if (
+    algorithm !== 'scrypt' ||
+    cost !== '32768' ||
+    blockSize !== '8' ||
+    parallelization !== '1' ||
+    !saltText ||
+    !keyText
+  ) {
     return false;
   }
   const expected = Buffer.from(keyText, 'base64url');

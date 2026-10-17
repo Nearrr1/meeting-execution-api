@@ -21,7 +21,10 @@ export class AccountLifecycleService {
       });
       if (account.count !== 1) throw new UnauthorizedException({ code: ApiErrorCode.SESSION_INVALID });
 
-      await transaction.authSession.updateMany({ where: { accountId, revokedAt: null }, data: { revokedAt: now } });
+      await transaction.authSession.updateMany({
+        where: { accountId, revokedAt: null },
+        data: { revokedAt: now },
+      });
       await this.audit(transaction, accountId, 'account_disable', requestId);
     });
   }
@@ -44,7 +47,10 @@ export class AccountLifecycleService {
       if (account.count !== 1) throw new UnauthorizedException({ code: ApiErrorCode.SESSION_INVALID });
 
       await transaction.accountDeletionRequest.create({ data: { accountId, requestedAt: now, purgeAt } });
-      await transaction.authSession.updateMany({ where: { accountId, revokedAt: null }, data: { revokedAt: now } });
+      await transaction.authSession.updateMany({
+        where: { accountId, revokedAt: null },
+        data: { revokedAt: now },
+      });
       await this.audit(transaction, accountId, 'account_deletion_request', requestId);
     });
     return { status: 'deletion_pending', purgeAt: purgeAt.toISOString() };

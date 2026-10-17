@@ -1,3 +1,6 @@
 export class VerifyEmailChangeCommand {
-  constructor(readonly token: string, readonly requestId: string) {}
+  constructor(
+    readonly token: string,
+    readonly requestId: string,
+  ) {}
 }

@@ -1,15 +1,25 @@
 import { Body, Controller, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
-import { EmailChangeRequestDto } from '../../auth.dto.ts';
+import { EmailChangeRequestDto } from './email-change-request.dto.ts';
 import { AuthenticatedRequest, SessionGuard } from '../../guards/index.ts';
 import { RequestEmailChangeCommand } from './request-email-change.command.ts';
 import { RequestEmailChangeHandler } from './request-email-change.handler.ts';
 @Controller()
 export class RequestEmailChangeEndpoint {
   constructor(private readonly handler: RequestEmailChangeHandler) {}
-  @Post('account/email-change-requests') @HttpCode(202) @UseGuards(SessionGuard)
+  @Post('account/email-change-requests')
+  @HttpCode(202)
+  @UseGuards(SessionGuard)
   async request(@Body() input: EmailChangeRequestDto, @Req() request: AuthenticatedRequest & Request) {
-    await this.handler.execute(new RequestEmailChangeCommand(request.authSession!.accountId, request.authSession!.id, input, request.ip ?? '', request.requestId!));
+    await this.handler.execute(
+      new RequestEmailChangeCommand(
+        request.authSession!.accountId,
+        request.authSession!.id,
+        input,
+        request.ip ?? '',
+        request.requestId!,
+      ),
+    );
     return {};
   }
 }

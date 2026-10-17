@@ -3,9 +3,10 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { sessionCookieName } from './session-cookie.ts';
+import { getRuntimeConfig } from '../config/index.ts';
 
 export const csrfCookieName = (): string =>
-  process.env.NODE_ENV === 'production' ? '__Host-aimeeting_csrf' : 'aimeeting_csrf';
+  getRuntimeConfig().environment === 'production' ? '__Host-aimeeting_csrf' : 'aimeeting_csrf';
 
 export const cookieValue = (request: Request, name: string): string | undefined => {
   const cookieHeader = request.headers.cookie;
@@ -26,8 +27,9 @@ export const cookieValue = (request: Request, name: string): string | undefined 
 export const newCsrfToken = (): string => randomBytes(32).toString('base64url');
 
 export const csrfCookie = (token: string): string => {
-  const secure = process.env.SESSION_COOKIE_SECURE === 'true' || process.env.NODE_ENV === 'production';
-  const sameSite = (process.env.SESSION_COOKIE_SAME_SITE ?? 'lax').toLowerCase();
+  const config = getRuntimeConfig();
+  const secure = config.sessionCookieSecure;
+  const sameSite = config.sessionCookieSameSite;
   if (sameSite === 'none' && !secure) throw new Error('SameSite=None requires Secure cookies');
   return `${csrfCookieName()}=${encodeURIComponent(token)}; Path=/; Max-Age=3600; HttpOnly; SameSite=${sameSite}${secure ? '; Secure' : ''}`;
 };
@@ -45,10 +47,7 @@ export class OriginAndCsrfGuard implements CanActivate {
       }
       return true;
     }
-    const allowed = (process.env.WEB_ORIGINS ?? '')
-      .split(',')
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const allowed = getRuntimeConfig().webOrigins;
     if (!allowed.includes(origin)) throw new ForbiddenException({ code: ApiErrorCode.ORIGIN_NOT_ALLOWED });
 
     const cookieToken = cookieValue(request, csrfCookieName());

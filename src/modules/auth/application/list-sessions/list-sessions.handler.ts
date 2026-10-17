@@ -4,5 +4,7 @@ import { ListSessionsCommand } from './list-sessions.command.ts';
 @Injectable()
 export class ListSessionsHandler {
   constructor(private readonly auth: AuthService) {}
-  execute(command: ListSessionsCommand) { return this.auth.listSessions(command.accountId); }
+  execute(command: ListSessionsCommand) {
+    return this.auth.listSessions(command.accountId);
+  }
 }

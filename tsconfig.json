@@ -22,6 +22,7 @@
     "paths": {
       "#auth": ["./src/modules/auth/index.ts"],
       "#common": ["./src/common/index.ts"],
+      "#config": ["./src/config/index.ts"],
       "#database": ["./src/database/index.ts"],
       "#email": ["./src/modules/email/index.ts"],
       "#modules": ["./src/modules/index.ts"],

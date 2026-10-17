@@ -19,7 +19,10 @@ Follow workspace `AGENTS.md` and canonical specs. Keep this repository independe
 - Use `TimeUnitMs` for durations. Keep API error identifiers in `ApiErrorCode` and avoid leaking internal exceptions.
 - Never log passwords, OTPs, session secrets, recovery tokens, provider tokens, or meeting content.
 - Prefer small cohesive services and existing dependencies.
-- Use the configured TypeScript path aliases (`#common`, `#database`, `#modules`, `#auth`, `#email`, `#workers`) for cross-feature shared imports. Map each alias to that folder's `index.ts`; `rewrite-aliases.mjs` rewrites emitted aliases for Node runtime.
+- Use the configured TypeScript path aliases (`#common`, `#config`, `#database`, `#modules`, `#auth`, `#email`, `#workers`) for cross-feature shared imports. Map each alias to that folder's `index.ts`; `rewrite-aliases.mjs` rewrites emitted aliases for Node runtime.
+- Validate runtime environment variables centrally in `src/config` before bootstrapping the Nest application. Keep secrets out of logs and configuration error messages.
+- Email delivery and quota providers are owned and exported by `EmailModule`; feature modules import it instead of registering those providers directly.
+- OIDC transaction state, nonce, and PKCE verifier are one-use and short-lived; sensitive transaction material must be encrypted at rest and never logged.
 - Keep `.ts` extensions on relative TypeScript imports. `allowImportingTsExtensions` and `rewriteRelativeImportExtensions` are configured so emitted JavaScript uses `.js` paths.
 - Keep Swagger UI mounted at `/docs` and treat root `openapi.yaml` as the API contract source. Update it when an authorized API contract changes.
 - Refactor in small steps. Inspect callers and persistence effects first; report unverified behavior honestly.
@@ -28,4 +31,6 @@ Follow workspace `AGENTS.md` and canonical specs. Keep this repository independe
 
 - `npm run typecheck` checks TypeScript without emitting files.
 - `npm run build` creates the NestJS production build.
+- `npm test` builds the app and runs the Node.js built-in test runner against `test/`.
+- `npm run format` applies the shared Prettier config to source and tests; `npm run format:check` verifies formatting.
 - Do not claim runtime behavior is verified by type checking or building.

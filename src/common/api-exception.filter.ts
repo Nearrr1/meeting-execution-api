@@ -4,6 +4,8 @@ import {
   ExceptionFilter,
   HttpException,
   HttpStatus,
+  Logger,
+  LoggerService,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
@@ -11,15 +13,27 @@ import { ApiErrorCode } from './api-error-code.enum.ts';
 
 @Catch()
 export class ApiExceptionFilter implements ExceptionFilter {
+  constructor(private readonly logger: LoggerService = new Logger(ApiExceptionFilter.name)) {}
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const context = host.switchToHttp();
     const response = context.getResponse<Response>();
     const request = context.getRequest<Request>();
-    const status = exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+    const status =
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
     const body = exception instanceof HttpException ? exception.getResponse() : undefined;
     const suppliedCode = typeof body === 'object' && body !== null && 'code' in body ? body.code : undefined;
     const code = typeof suppliedCode === 'string' ? suppliedCode : this.defaultCode(status);
     const requestId = request.requestId ?? randomUUID();
+
+    if (status >= 500) {
+      this.logger.error({
+        event: 'http_request_failed',
+        requestId,
+        status,
+        exceptionType: exception instanceof Error ? exception.name : typeof exception,
+      });
+    }
 
     response.setHeader('X-Request-Id', requestId);
     response.status(status).json({

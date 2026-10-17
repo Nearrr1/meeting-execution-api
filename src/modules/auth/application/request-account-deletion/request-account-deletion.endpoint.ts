@@ -7,9 +7,17 @@ import { RequestAccountDeletionHandler } from './request-account-deletion.handle
 @Controller()
 export class RequestAccountDeletionEndpoint {
   constructor(private readonly handler: RequestAccountDeletionHandler) {}
-  @Post('account/deletion-requests') @HttpCode(202) @UseGuards(SessionGuard)
+  @Post('account/deletion-requests')
+  @HttpCode(202)
+  @UseGuards(SessionGuard)
   async request(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) {
-    const result = await this.handler.execute(new RequestAccountDeletionCommand(request.authSession!.accountId, request.authSession!.id, request.requestId!));
+    const result = await this.handler.execute(
+      new RequestAccountDeletionCommand(
+        request.authSession!.accountId,
+        request.authSession!.id,
+        request.requestId!,
+      ),
+    );
     response.setHeader('Set-Cookie', serializeSessionCookie('', 0));
     return result;
   }

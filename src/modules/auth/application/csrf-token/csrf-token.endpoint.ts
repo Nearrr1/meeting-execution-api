@@ -8,6 +8,10 @@ export class CsrfTokenEndpoint {
   @Get('auth/csrf-token')
   get(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const origin = request.headers.origin;
-    return this.handler.execute(new CsrfTokenCommand(typeof origin === 'string' ? origin : undefined), (cookie) => response.setHeader('Set-Cookie', cookie), (name, value) => response.setHeader(name, value));
+    return this.handler.execute(
+      new CsrfTokenCommand(typeof origin === 'string' ? origin : undefined),
+      (cookie) => response.setHeader('Set-Cookie', cookie),
+      (name, value) => response.setHeader(name, value),
+    );
   }
 }

@@ -8,7 +8,10 @@
   },
   "scripts": {
     "build": "nest build && node rewrite-aliases.mjs",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.{js,ts}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.{js,ts}\"",
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
+    "test": "npm run build && node --test",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
@@ -25,6 +28,7 @@
     "class-transformer": "0.5.1",
     "class-validator": "0.14.2",
     "dotenv": "18.0.7",
+    "openid-client": "^6.8.8",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "yaml": "2.9.1"
@@ -32,6 +36,7 @@
   "devDependencies": {
     "@nestjs/cli": "12.0.8",
     "@types/node": "^24.9.1",
+    "prettier": "^3.9.10",
     "prisma": "7.10.0",
     "typescript": "5.9.3"
   }

@@ -24,16 +24,19 @@ export class AccountDeletionWorker implements OnModuleInit, OnModuleDestroy {
     if (this.running) return;
     this.running = true;
     try {
-      await this.prisma.$transaction(async (tx) => {
-        const due = await tx.$queryRaw<Array<{ account_id: string }>>`
+      await this.prisma.$transaction(
+        async (tx) => {
+          const due = await tx.$queryRaw<Array<{ account_id: string }>>`
           SELECT account_id FROM account_deletion_requests
           WHERE status = 'scheduled' AND purge_at <= CURRENT_TIMESTAMP
           ORDER BY purge_at LIMIT 20 FOR UPDATE SKIP LOCKED
         `;
-        for (const { account_id: accountId } of due) {
-          await this.purgeAccount(tx, accountId);
-        }
-      }, { maxWait: 5 * TimeUnitMs.SECOND, timeout: 30 * TimeUnitMs.SECOND });
+          for (const { account_id: accountId } of due) {
+            await this.purgeAccount(tx, accountId);
+          }
+        },
+        { maxWait: 5 * TimeUnitMs.SECOND, timeout: 30 * TimeUnitMs.SECOND },
+      );
     } catch {
       this.logger.error('Account deletion worker failed');
     } finally {
@@ -41,10 +44,7 @@ export class AccountDeletionWorker implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async purgeAccount(
-    tx: Prisma.TransactionClient,
-    accountId: string,
-  ): Promise<void> {
+  private async purgeAccount(tx: Prisma.TransactionClient, accountId: string): Promise<void> {
     const completedAt = new Date();
     await Promise.all([
       tx.accountEmail.deleteMany({ where: { accountId } }),

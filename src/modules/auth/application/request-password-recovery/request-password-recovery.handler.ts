@@ -4,5 +4,7 @@ import { RequestPasswordRecoveryCommand } from './request-password-recovery.comm
 @Injectable()
 export class RequestPasswordRecoveryHandler {
   constructor(private readonly auth: AuthService) {}
-  execute(command: RequestPasswordRecoveryCommand) { return this.auth.requestPasswordRecovery(command.email, command.sourceIp, command.requestId); }
+  execute(command: RequestPasswordRecoveryCommand) {
+    return this.auth.requestPasswordRecovery(command.email, command.sourceIp, command.requestId);
+  }
 }

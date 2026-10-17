@@ -16,6 +16,7 @@ import { withSerializableTransaction } from '#database';
 import { TimeUnitMs } from '#common';
 import { EmailDeliveryService } from '#email';
 import { EmailQuotaBlocked, EmailQuotaService } from '#email';
+import { getRuntimeConfig } from '#config';
 
 const EMAIL_CHANGE_TTL_MS = 30 * TimeUnitMs.MINUTE;
 const SEND_WINDOW_MS = TimeUnitMs.HOUR;
@@ -83,10 +84,18 @@ export class EmailChangeService {
         const windowStart = new Date(now.getTime() - SEND_WINDOW_MS);
         const [emailSends, ipSends] = await Promise.all([
           transaction.rateLimitEvent.count({
-            where: { scope: 'email_change_email_send', identifierDigest: emailDigest, createdAt: { gt: windowStart } },
+            where: {
+              scope: 'email_change_email_send',
+              identifierDigest: emailDigest,
+              createdAt: { gt: windowStart },
+            },
           }),
           transaction.rateLimitEvent.count({
-            where: { scope: 'email_change_source_ip_send', identifierDigest: ipDigest, createdAt: { gt: windowStart } },
+            where: {
+              scope: 'email_change_source_ip_send',
+              identifierDigest: ipDigest,
+              createdAt: { gt: windowStart },
+            },
           }),
         ]);
         if (emailSends >= 5 || ipSends >= 20) {
@@ -137,7 +146,8 @@ export class EmailChangeService {
   }
 
   async verify(token: string, requestId: string): Promise<void> {
-    if (token.length < 32 || token.length > 128) throw new BadRequestException({ code: ApiErrorCode.EMAIL_CHANGE_INVALID });
+    if (token.length < 32 || token.length > 128)
+      throw new BadRequestException({ code: ApiErrorCode.EMAIL_CHANGE_INVALID });
     const tokenHash = createHash('sha256').update(token).digest('hex');
     const now = new Date();
     const candidate = await this.prisma.emailChangeRequest.findFirst({
@@ -151,7 +161,13 @@ export class EmailChangeService {
 
     await withSerializableTransaction(this.prisma, async (transaction) => {
       const changeRequest = await transaction.emailChangeRequest.findFirst({
-        where: { id: candidate.id, tokenHash, pendingEmailNormalized: { not: null }, consumedAt: null, expiresAt: { gt: now } },
+        where: {
+          id: candidate.id,
+          tokenHash,
+          pendingEmailNormalized: { not: null },
+          consumedAt: null,
+          expiresAt: { gt: now },
+        },
       });
       if (!changeRequest) throw new BadRequestException({ code: ApiErrorCode.EMAIL_CHANGE_INVALID });
       const collision = await transaction.accountEmail.findUnique({
@@ -188,24 +204,12 @@ export class EmailChangeService {
   }
 
   private identifierDigest(value: string): string {
-    const key = process.env.OTP_HMAC_KEY;
-    if (!key || Buffer.byteLength(key) < 32) {
-      throw new InternalServerErrorException({ code: ApiErrorCode.AUTHENTICATION_NOT_CONFIGURED });
-    }
+    const key = getRuntimeConfig().otpHmacKey;
     return createHmac('sha256', key).update(value).digest('hex');
   }
 
   private confirmationUrl(token: string): string {
-    const configuredUrl = process.env.EMAIL_CHANGE_URL;
-    if (!configuredUrl) throw new InternalServerErrorException({ code: ApiErrorCode.EMAIL_CHANGE_NOT_CONFIGURED });
-    const url = new URL(configuredUrl);
-    const allowedOrigins = (process.env.WEB_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean);
-    if (
-      !allowedOrigins.includes(url.origin) || url.username || url.password || url.hash ||
-      (process.env.NODE_ENV === 'production' && url.protocol !== 'https:')
-    ) {
-      throw new InternalServerErrorException({ code: ApiErrorCode.EMAIL_CHANGE_NOT_CONFIGURED });
-    }
+    const url = new URL(getRuntimeConfig().emailChangeUrl);
     url.searchParams.set('token', token);
     return url.toString();
   }
@@ -222,7 +226,11 @@ export class EmailChangeService {
     });
   }
 
-  private async recordDeliveryFailure(accountId: string, requestId: string, eventType: string): Promise<void> {
+  private async recordDeliveryFailure(
+    accountId: string,
+    requestId: string,
+    eventType: string,
+  ): Promise<void> {
     try {
       await this.prisma.securityAuditEvent.create({
         data: { accountId, eventType, outcome: 'failed', requestId, metadata: {} },

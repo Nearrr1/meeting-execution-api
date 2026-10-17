@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post, Req } from '@nestjs/common';
 import type { Request } from 'express';
-import { RegistrationDto } from '../../auth.dto.ts';
+import { RegistrationDto } from './registration.dto.ts';
 import { RegisterCommand } from './register.command.ts';
 import { RegisterHandler } from './register.handler.ts';
 

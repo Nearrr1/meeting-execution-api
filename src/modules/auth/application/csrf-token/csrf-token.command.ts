@@ -1,1 +1,3 @@
-export class CsrfTokenCommand { constructor(readonly origin: string | undefined) {} }
+export class CsrfTokenCommand {
+  constructor(readonly origin: string | undefined) {}
+}

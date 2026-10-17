@@ -1521,6 +1521,11 @@ jiti@^2.6.1:
   resolved "https://registry.npmjs.org/jiti/-/jiti-2.7.0.tgz"
   integrity sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==
 
+jose@^6.2.12:
+  version "6.2.12"
+  resolved "https://registry.npmjs.org/jose/-/jose-6.2.12.tgz"
+  integrity sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==
+
 js-yaml@5.4.2:
   version "5.4.2"
   resolved "https://registry.npmjs.org/js-yaml/-/js-yaml-5.4.2.tgz"
@@ -1702,6 +1707,11 @@ node-emoji@2.2.0:
     emojilib "^2.4.0"
     skin-tone "^2.0.0"
 
+oauth4webapi@^3.8.8:
+  version "3.8.8"
+  resolved "https://registry.npmjs.org/oauth4webapi/-/oauth4webapi-3.8.8.tgz"
+  integrity sha512-8N28E+a/oxfXWBgOMt+ZP/JUf/XR+IFbvkAEPP3gznXOMv9BpAAwiIj0TFNz3tGTPc0ZQ8zmWBNgN1nAys0gng==
+
 object-assign@^4:
   version "4.1.1"
   resolved "https://registry.npmjs.org/object-assign/-/object-assign-4.1.1.tgz"
@@ -1737,6 +1747,14 @@ onetime@^7.0.0:
   integrity sha512-VXJjc87FScF88uafS3JllDgvAm+c/Slfz06lorj2uAY34rlUu0Nt+v8wreiImcrgAjjIHp1rXpTDlLOGw29WwQ==
   dependencies:
     mimic-function "^5.0.0"
+
+openid-client@^6.8.8:
+  version "6.8.8"
+  resolved "https://registry.npmjs.org/openid-client/-/openid-client-6.8.8.tgz"
+  integrity sha512-ZsucJA5Ad04Uv7YN4ql+s4GXNmb9uAYQwyJTsJx7CH/MX3JZioLE2pVKi1SC+YrbSLA4Px3Gi30dMjgOZtb6pA==
+  dependencies:
+    jose "^6.2.12"
+    oauth4webapi "^3.8.8"
 
 ora@9.4.1:
   version "9.4.1"
@@ -1883,6 +1901,11 @@ postgres@3.4.7:
   version "3.4.7"
   resolved "https://registry.npmjs.org/postgres/-/postgres-3.4.7.tgz"
   integrity sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==
+
+prettier@^3.0.0, prettier@^3.9.10:
+  version "3.9.10"
+  resolved "https://registry.npmjs.org/prettier/-/prettier-3.9.10.tgz"
+  integrity sha512-skGHTH1Yb9QvaTC4hWnRTzEYtCpApF0UMBPz+t/0ZPzP8ihefo/btKd+QA7pUE0fEwA1SbS/NmhyEcstdXOIdA==
 
 prisma@*, prisma@7.10.0:
   version "7.10.0"

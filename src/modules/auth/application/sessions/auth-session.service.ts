@@ -35,7 +35,14 @@ export class AuthSessionService {
     const sessions = await this.prisma.authSession.findMany({
       where: { accountId, revokedAt: null, idleExpiresAt: { gt: now }, absoluteExpiresAt: { gt: now } },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, createdAt: true, lastSeenAt: true, idleExpiresAt: true, absoluteExpiresAt: true, userAgentLabel: true },
+      select: {
+        id: true,
+        createdAt: true,
+        lastSeenAt: true,
+        idleExpiresAt: true,
+        absoluteExpiresAt: true,
+        userAgentLabel: true,
+      },
     });
     return {
       sessions: sessions.map(({ userAgentLabel, ...session }) => ({
