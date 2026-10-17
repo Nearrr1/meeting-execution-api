@@ -4,7 +4,7 @@ Follow workspace `AGENTS.md` and canonical specs. Keep this repository independe
 
 ## Structure
 
-- `src/modules/<feature>` owns a feature. Put each API use case in `application/<endpoint>/` with one `<endpoint>.service.ts` and an `index.ts` import gate. Keep authorization in `guards/` and shared domain operations in `services/`.
+- `src/modules/<feature>` owns a feature. Put each API use case in `application/<endpoint>/` with `<endpoint>.command.ts`, `<endpoint>.endpoint.ts`, `<endpoint>.handler.ts`, and an `index.ts` import gate. Keep HTTP mapping in endpoint classes and request data in command constructors. Each handler should depend on exactly one service. Put shared auth operations behind `AuthService`; place logic used only by one API in that use case's folder. Keep authorization in `guards/`.
 - Each folder that is imported from outside itself has an `index.ts` barrel as its import gate. Import through that gate; avoid reaching into another folder's implementation file.
 - `src/common` contains shared transport concerns and cross-feature constants.
 - `src/database` contains Prisma lifecycle and transaction helpers. Prisma schema and migrations remain in root `prisma/`.
@@ -13,7 +13,7 @@ Follow workspace `AGENTS.md` and canonical specs. Keep this repository independe
 
 ## Backend rules
 
-- Controllers translate HTTP input/output. Keep business rules and database access in services.
+- Each HTTP endpoint is a small Nest controller class in its use-case folder. It validates/maps transport input and dispatches a command to its handler. Keep business rules and database access in cohesive services. Avoid endpoint-local forwarding wrappers; use `AuthService` for shared operations and a use-case-local service for API-specific logic.
 - Preserve OpenAPI behavior during refactors. Validate external input through DTOs.
 - Derive account scope from the authenticated session. Use transactions for multi-row lifecycle changes.
 - Use `TimeUnitMs` for durations. Keep API error identifiers in `ApiErrorCode` and avoid leaking internal exceptions.

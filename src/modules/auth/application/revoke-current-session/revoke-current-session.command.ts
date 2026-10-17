@@ -1,3 +1,1 @@
-export class RevokeCurrentSessionCommand {
-  constructor(readonly sessionId: string) {}
-}
+export class RevokeCurrentSessionCommand { constructor(readonly sessionId: string) {} }

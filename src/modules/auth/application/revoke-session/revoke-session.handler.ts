@@ -1,11 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { AuthSessionService } from '../sessions/index.ts';
+import { AuthService } from '../../services/index.ts';
 import { RevokeSessionCommand } from './revoke-session.command.ts';
-
 @Injectable()
 export class RevokeSessionHandler {
-  constructor(private readonly sessions: AuthSessionService) {}
-  execute(command: RevokeSessionCommand): Promise<void> {
-    return this.sessions.revokeOwned(command.accountId, command.sessionId);
-  }
+  constructor(private readonly auth: AuthService) {}
+  execute(command: RevokeSessionCommand) { return this.auth.revokeSession(command.accountId, command.sessionId); }
 }

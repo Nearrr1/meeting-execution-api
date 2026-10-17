@@ -13,15 +13,17 @@ import {
   scrypt as scryptCallback,
   timingSafeEqual,
 } from 'node:crypto';
-import { ApiErrorCode } from '#common';
-import { createSessionSecret } from '#common';
-import { TimeUnitMs } from '#common';
-import { PrismaService } from '#database';
-import { withSerializableTransaction } from '#database';
+
 import { ChallengePurpose, Prisma } from '../../../generated/prisma/client.ts';
-import { EmailDeliveryService } from '#email';
-import { EmailQuotaBlocked, EmailQuotaService } from '#email';
+
 import { ChangePasswordInput, PasswordResetInput, RegistrationInput, RegistrationResult, SignInResult, VerifyEmailInput, VerifyEmailResult } from '../auth.types.ts';
+import { AccountLifecycleService } from '../application/account-lifecycle/index.ts';
+import { AuthSessionService } from '../application/sessions/index.ts';
+import { EmailChangeService, type EmailChangeInput } from '../application/email-change/index.ts';
+import type { AuthenticatedRequest } from '../guards/index.ts';
+import { ApiErrorCode, createSessionSecret, TimeUnitMs } from '#common';
+import { PrismaService, withSerializableTransaction } from '#database';
+import { EmailDeliveryService, EmailQuotaBlocked, EmailQuotaService } from '#email';
 
 const OTP_TTL_MS = 10 * TimeUnitMs.MINUTE;
 const PASSWORD_RESET_TTL_MS = 30 * TimeUnitMs.MINUTE;
@@ -42,7 +44,42 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly emailDelivery: EmailDeliveryService,
     private readonly emailQuota: EmailQuotaService,
+    private readonly accountLifecycle: AccountLifecycleService,
+    private readonly sessions: AuthSessionService,
+    private readonly emailChange: EmailChangeService,
   ) {}
+
+  disableAccount(accountId: string, sessionId: string, requestId: string): Promise<void> {
+    return this.accountLifecycle.disableAccount(accountId, sessionId, requestId);
+  }
+
+  requestAccountDeletion(accountId: string, sessionId: string, requestId: string) {
+    return this.accountLifecycle.requestDeletion(accountId, sessionId, requestId);
+  }
+
+  currentSession(session: NonNullable<AuthenticatedRequest['authSession']>) {
+    return this.sessions.current(session);
+  }
+
+  listSessions(accountId: string) {
+    return this.sessions.list(accountId);
+  }
+
+  revokeCurrentSession(sessionId: string): Promise<void> {
+    return this.sessions.revoke(sessionId);
+  }
+
+  revokeSession(accountId: string, sessionId: string): Promise<void> {
+    return this.sessions.revokeOwned(accountId, sessionId);
+  }
+
+  requestEmailChange(accountId: string, sessionId: string, input: EmailChangeInput, sourceIp: string, requestId: string): Promise<void> {
+    return this.emailChange.request(accountId, sessionId, input, sourceIp, requestId);
+  }
+
+  verifyEmailChange(token: string, requestId: string): Promise<void> {
+    return this.emailChange.verify(token, requestId);
+  }
 
   async register(input: RegistrationInput, sourceIp: string, requestId: string): Promise<RegistrationResult> {
     this.validatePassword(input.password);

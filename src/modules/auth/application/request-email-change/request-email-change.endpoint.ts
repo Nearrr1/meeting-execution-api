@@ -4,16 +4,12 @@ import { EmailChangeRequestDto } from '../../auth.dto.ts';
 import { AuthenticatedRequest, SessionGuard } from '../../guards/index.ts';
 import { RequestEmailChangeCommand } from './request-email-change.command.ts';
 import { RequestEmailChangeHandler } from './request-email-change.handler.ts';
-
 @Controller()
 export class RequestEmailChangeEndpoint {
   constructor(private readonly handler: RequestEmailChangeHandler) {}
-  @Post('account/email-change-requests')
-  @HttpCode(202)
-  @UseGuards(SessionGuard)
+  @Post('account/email-change-requests') @HttpCode(202) @UseGuards(SessionGuard)
   async request(@Body() input: EmailChangeRequestDto, @Req() request: AuthenticatedRequest & Request) {
-    const session = request.authSession!;
-    await this.handler.execute(new RequestEmailChangeCommand(session.accountId, session.id, input, request.ip ?? '', request.requestId!));
+    await this.handler.execute(new RequestEmailChangeCommand(request.authSession!.accountId, request.authSession!.id, input, request.ip ?? '', request.requestId!));
     return {};
   }
 }

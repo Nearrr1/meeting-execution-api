@@ -1,1 +1,3 @@
-export { ReauthenticateService } from './reauthenticate.service.ts';
+export { ReauthenticateCommand } from './reauthenticate.command.ts';
+export { ReauthenticateEndpoint } from './reauthenticate.endpoint.ts';
+export { ReauthenticateHandler } from './reauthenticate.handler.ts';

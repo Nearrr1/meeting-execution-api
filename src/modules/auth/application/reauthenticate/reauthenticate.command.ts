@@ -1,3 +1,4 @@
+import type { ReauthenticationDto } from '../../auth.dto.ts';
 export class ReauthenticateCommand {
-  constructor(readonly accountId: string, readonly sessionId: string, readonly password?: string, readonly provider?: string, readonly requestId?: string) {}
+  constructor(readonly accountId: string, readonly sessionId: string, readonly input: ReauthenticationDto, readonly requestId: string) {}
 }

@@ -1,3 +1,1 @@
-export class ListSessionsCommand {
-  constructor(readonly accountId: string) {}
-}
+export class ListSessionsCommand { constructor(readonly accountId: string) {} }
