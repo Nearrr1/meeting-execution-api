@@ -17,7 +17,42 @@ servers:
 tags:
   - name: Authentication
   - name: Account
+  - name: Health
 paths:
+  /health/live:
+    get:
+      tags: [Health]
+      summary: Check that the API process is running
+      operationId: checkLiveness
+      security: []
+      responses:
+        '200':
+          description: API process is running
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: alive }
+  /health/ready:
+    get:
+      tags: [Health]
+      summary: Check that the API can serve requests
+      operationId: checkReadiness
+      description: Returns ready only while PostgreSQL accepts a query. The response does not expose dependency details.
+      security: []
+      responses:
+        '200':
+          description: API and PostgreSQL are ready
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ready }
+        '503': { $ref: '#/components/responses/ServiceUnavailable' }
   /auth/csrf-token:
     get:
       tags: [Authentication]
@@ -444,6 +479,11 @@ components:
           schema: { $ref: '#/components/schemas/ErrorResponse' }
     ServerError:
       description: Unexpected server error
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    ServiceUnavailable:
+      description: API readiness check failed because PostgreSQL is unavailable
       content:
         application/json:
           schema: { $ref: '#/components/schemas/ErrorResponse' }

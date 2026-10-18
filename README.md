@@ -26,6 +26,8 @@ The application requires Node.js 24 LTS and pnpm 11.25.0. Enable Corepack, insta
 
 Deploy and validate this API before configuring the web app's production base URL. The hosting provider and production database are still undecided in the canonical deployment architecture, so a live deployment cannot be completed until those targets and their secret configuration are selected. The generic release sequence is: install from `pnpm-lock.yaml`, generate Prisma Client, build, apply migrations with `pnpm db:migrate:deploy`, and start with `pnpm start`. Configure `WEB_ORIGINS`, secure production cookies, `PASSWORD_RESET_URL`, `EMAIL_CHANGE_URL`, Resend, and the OIDC callback against the deployed web/API origins before enabling production auth flows.
 
+Provider health probes can use `GET /api/v1/health/live` for process liveness and `GET /api/v1/health/ready` for PostgreSQL readiness. Liveness does not depend on PostgreSQL; readiness returns `503` without exposing dependency details when PostgreSQL is unavailable.
+
 The API application is still a bootstrap. Hindsight is installed separately as a local development service and may be used now as project memory for the AI coding assistant, retaining curated architecture/spec context across sessions. It is not wired into API requests; the Phase 1 product workflow remains independent of Hindsight. End-user Second Brain integration is a later Phase 2 feature. The OpenAI configuration below applies only to this local Hindsight service; it does not select the product's meeting-analysis provider.
 
 On Windows, install the standalone Hindsight API in an isolated environment from this repository root:
