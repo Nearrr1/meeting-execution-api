@@ -5,6 +5,6 @@ import { RevokeSessionCommand } from './revoke-session.command.ts';
 export class RevokeSessionHandler {
   constructor(private readonly auth: AuthService) {}
   execute(command: RevokeSessionCommand) {
-    return this.auth.revokeSession(command.accountId, command.sessionId);
+    return this.auth.revokeSession(command.accountId, command.sessionId, command.requestId);
   }
 }

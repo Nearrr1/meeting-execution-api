@@ -4,7 +4,7 @@ Backend repository for the AI Meeting → Execution product. The backend will ow
 
 ## Status
 
-The NestJS API now implements local registration, email OTP verification/resend, sign-in, password recovery/reset, local reauthentication, password changes, email changes, account disablement, 30-day deletion scheduling, CSRF bootstrap, and session inspection/revocation. A PostgreSQL-locked API worker purges due account data and retains a minimal tombstone. OIDC and identity linking remain pending. Live OIDC validation follows after provider configuration is approved.
+The NestJS API implements local registration, email OTP verification/resend, sign-in, password recovery/reset, local and federated reauthentication, password and email changes, OIDC identity linking, cookie sessions, account disablement, internal support-assisted reactivation, 30-day deletion scheduling, CSRF protection, and session inspection/revocation. A PostgreSQL-locked API worker purges due account data and retains a minimal tombstone. Provider tenant setup and live OIDC validation remain deployment gates.
 
 ## Repository boundaries
 
@@ -20,7 +20,11 @@ Product requirements, SRS, cross-repository architecture, and ADRs live in the s
 
 ## Local setup and commands
 
-The application requires Node.js 24 LTS. Install dependencies, configure `.env`, generate Prisma Client, apply local migrations, then start the development server with `npm run start:dev`. The OpenAPI contract is at `http://localhost:3000/docs`. Browser clients must first fetch `/api/v1/auth/csrf-token` with credentials, then send the returned token in `X-CSRF-Token` on mutating requests.
+The application requires Node.js 24 LTS and pnpm 11.25.0. Enable Corepack, install dependencies with `pnpm install --frozen-lockfile`, configure `.env`, generate Prisma Client with `pnpm db:generate`, apply local migrations, then start the development server with `pnpm start:dev`. The OpenAPI contract is at `http://localhost:3000/docs`. Browser clients must first fetch `/api/v1/auth/csrf-token` with credentials, then send the returned token in `X-CSRF-Token` on mutating requests.
+
+## Production rollout
+
+Deploy and validate this API before configuring the web app's production base URL. The hosting provider and production database are still undecided in the canonical deployment architecture, so a live deployment cannot be completed until those targets and their secret configuration are selected. The generic release sequence is: install from `pnpm-lock.yaml`, generate Prisma Client, build, apply migrations with `pnpm db:migrate:deploy`, and start with `pnpm start`. Configure `WEB_ORIGINS`, secure production cookies, `PASSWORD_RESET_URL`, `EMAIL_CHANGE_URL`, Resend, and the OIDC callback against the deployed web/API origins before enabling production auth flows.
 
 The API application is still a bootstrap. Hindsight is installed separately as a local development service and may be used now as project memory for the AI coding assistant, retaining curated architecture/spec context across sessions. It is not wired into API requests; the Phase 1 product workflow remains independent of Hindsight. End-user Second Brain integration is a later Phase 2 feature. The OpenAI configuration below applies only to this local Hindsight service; it does not select the product's meeting-analysis provider.
 

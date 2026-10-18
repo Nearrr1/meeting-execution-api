@@ -72,12 +72,12 @@ export class AuthService {
     return this.sessions.list(accountId);
   }
 
-  revokeCurrentSession(sessionId: string): Promise<void> {
-    return this.sessions.revoke(sessionId);
+  revokeCurrentSession(sessionId: string, requestId: string): Promise<void> {
+    return this.sessions.revoke(sessionId, requestId);
   }
 
-  revokeSession(accountId: string, sessionId: string): Promise<void> {
-    return this.sessions.revokeOwned(accountId, sessionId);
+  revokeSession(accountId: string, sessionId: string, requestId: string): Promise<void> {
+    return this.sessions.revokeOwned(accountId, sessionId, requestId);
   }
 
   requestEmailChange(

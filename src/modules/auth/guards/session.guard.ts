@@ -38,6 +38,7 @@ export class SessionGuard implements CanActivate {
         account: {
           include: {
             emails: { where: { isPrimary: true }, take: 1 },
+            localCredential: { select: { accountId: true } },
             federatedIdentities: true,
           },
         },
@@ -74,11 +75,15 @@ export class SessionGuard implements CanActivate {
       displayName: record.account.displayName,
       primaryEmail: record.account.emails[0].addressSubmitted,
       identities: [
-        {
-          id: `local:${record.accountId}`,
-          provider: 'local',
-          label: maskEmail(record.account.emails[0].addressSubmitted),
-        },
+        ...(record.account.localCredential
+          ? [
+              {
+                id: `local:${record.accountId}`,
+                provider: 'local',
+                label: maskEmail(record.account.emails[0].addressSubmitted),
+              },
+            ]
+          : []),
         ...record.account.federatedIdentities.map((identity) => ({
           id: identity.id,
           provider: identity.provider,

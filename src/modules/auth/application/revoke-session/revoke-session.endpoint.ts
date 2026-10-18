@@ -12,6 +12,8 @@ export class RevokeSessionEndpoint {
     @Req() request: AuthenticatedRequest,
     @Param('sessionId', new ParseUUIDPipe()) sessionId: string,
   ): Promise<void> {
-    await this.handler.execute(new RevokeSessionCommand(request.authSession!.accountId, sessionId));
+    await this.handler.execute(
+      new RevokeSessionCommand(request.authSession!.accountId, sessionId, request.requestId!),
+    );
   }
 }

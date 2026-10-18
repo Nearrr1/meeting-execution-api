@@ -14,7 +14,7 @@ export class RevokeCurrentSessionEndpoint {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<void> {
-    await this.handler.execute(new RevokeCurrentSessionCommand(request.authSession!.id));
+    await this.handler.execute(new RevokeCurrentSessionCommand(request.authSession!.id, request.requestId!));
     response.setHeader('Set-Cookie', serializeSessionCookie('', 0));
   }
 }

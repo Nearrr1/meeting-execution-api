@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ApiErrorCode } from '#common';
 import type { AuthenticatedRequest } from '../../guards/index.ts';
-import { PrismaService } from '#database';
+import { PrismaService, withSerializableTransaction } from '#database';
 
 @Injectable()
 export class AuthSessionService {
@@ -52,17 +52,43 @@ export class AuthSessionService {
     };
   }
 
-  async revoke(sessionId: string): Promise<void> {
-    await this.prisma.authSession.updateMany({
-      where: { id: sessionId, revokedAt: null },
-      data: { revokedAt: new Date() },
+  async revoke(sessionId: string, requestId: string): Promise<void> {
+    const now = new Date();
+    await withSerializableTransaction(this.prisma, async (transaction) => {
+      const session = await transaction.authSession.findUnique({
+        where: { id: sessionId },
+        select: { accountId: true, revokedAt: true },
+      });
+      if (!session || session.revokedAt) return;
+      const revoked = await transaction.authSession.updateMany({
+        where: { id: sessionId, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      if (revoked.count === 1) {
+        await transaction.securityAuditEvent.create({
+          data: {
+            accountId: session.accountId,
+            eventType: 'session_sign_out',
+            outcome: 'succeeded',
+            requestId,
+          },
+        });
+      }
     });
   }
 
-  async revokeOwned(accountId: string, sessionId: string): Promise<void> {
-    await this.prisma.authSession.updateMany({
-      where: { id: sessionId, accountId, revokedAt: null },
-      data: { revokedAt: new Date() },
+  async revokeOwned(accountId: string, sessionId: string, requestId: string): Promise<void> {
+    const now = new Date();
+    await withSerializableTransaction(this.prisma, async (transaction) => {
+      const revoked = await transaction.authSession.updateMany({
+        where: { id: sessionId, accountId, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      if (revoked.count === 1) {
+        await transaction.securityAuditEvent.create({
+          data: { accountId, eventType: 'session_revoked', outcome: 'succeeded', requestId },
+        });
+      }
     });
   }
 }

@@ -19,6 +19,7 @@ import {
   ReauthenticateEndpoint,
   ReauthenticateHandler,
   ReauthenticationService,
+  ReactivateAccountService,
   RegisterEndpoint,
   RegisterHandler,
   RequestAccountDeletionEndpoint,
@@ -103,6 +104,7 @@ import { AccountDeletionWorker } from '#workers';
     CsrfTokenHandler,
     CsrfTokenService,
     AccountLifecycleService,
+    ReactivateAccountService,
     AuthSessionService,
     EmailChangeService,
     SessionGuard,
@@ -115,5 +117,6 @@ import { AccountDeletionWorker } from '#workers';
     AccountDeletionWorker,
     { provide: APP_GUARD, useClass: OriginAndCsrfGuard },
   ],
+  exports: [ReactivateAccountService],
 })
 export class AuthModule {}

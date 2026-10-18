@@ -63,6 +63,7 @@ export {
   VerifyEmailChangeHandler,
 } from './verify-email-change/index.ts';
 export { EmailChangeService } from './email-change/index.ts';
+export { ReactivateAccountService } from './reactivate-account/index.ts';
 export { AuthSessionService } from './sessions/index.ts';
 export {
   IdentityListEndpoint,
