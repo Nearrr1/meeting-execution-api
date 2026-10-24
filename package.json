@@ -8,7 +8,7 @@
     "node": ">=24.15.0"
   },
   "scripts": {
-    "build": "nest build && node rewrite-aliases.mjs",
+    "build": "prisma generate && nest build && node rewrite-aliases.mjs",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.{js,ts}\" pnpm-workspace.yaml",
     "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.{js,ts}\" pnpm-workspace.yaml",
     "typecheck": "tsc --noEmit -p tsconfig.build.json",
